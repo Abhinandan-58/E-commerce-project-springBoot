@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         GITHUB_REPO_URL = "https://github.com/Abhinandan-58/E-commerce-project-springBoot.git"
-        GIT_BRANCH      = "master2"
+        GIT_BRANCH      = "main"
         SSH_CRED_ID     = "abhi"
         EC2_IP          = "35.90.8.17"
         REMOTE_USER     = "ubuntu"
