@@ -4,12 +4,12 @@ pipeline {
 
     environment {
         GITHUB_REPO_URL = "https://github.com/Abhinandan-58/E-commerce-project-springBoot.git"
-        GIT_BRANCH      = "main"
+        GIT_BRANCH      = "master2"
         SSH_CRED_ID     = "abhi"
         EC2_IP          = "35.90.8.17"
         REMOTE_USER     = "ubuntu"
         APP_PATH        = "/app/ecommerce.jar"
-        PROJECT_DIR     = "JtProject"
+        PROJECT_DIR     = "/app"
     }
 
     stages {
