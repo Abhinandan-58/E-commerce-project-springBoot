@@ -2,74 +2,43 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_REPO_URL = "https://github.com/Abhinandan-58/E-commerce-project-springBoot.git"
-        GIT_BRANCH      = "master2"
-        SSH_CRED_ID     = "abhi"
-        EC2_IP          = "35.164.156.107"
-        REMOTE_USER     = "ubuntu"
-        APP_PATH        = "/app/ecommerce.jar"
-        PROJECT_DIR     = "/app"
+        EC2_USER = "ubuntu"    // Ubuntu server user
+        EC2_HOST = "35.164.156.107"  // Terraform output
+        SSH_KEY  = "/var/lib/jenkins/abhi.pem"
     }
 
     stages {
-        stage('Checkout Code') {
+
+        stage('Pull Code from GitHub') {
             steps {
-                echo "Cloning ${GITHUB_REPO_URL} (branch: ${GIT_BRANCH})"
-                git url: "${GITHUB_REPO_URL}", branch: "${GIT_BRANCH}"
+                git branch: 'master2', url: 'https://github.com/Abhinandan-58/E-commerce-project-springBoot.git'
             }
         }
 
-        stage('Build with Maven') {
+        stage('Build Spring Boot App') {
             steps {
-                echo "Running Maven Build (Tests Skipped) in ${PROJECT_DIR}..."
-                dir("${PROJECT_DIR}") {
-                    sh "mvn -B clean package -DskipTests"
-                }
-            }
-            post {
-                success {
-                    archiveArtifacts artifacts: "${PROJECT_DIR}/target/*.jar", fingerprint: true
-                }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Upload JAR to Ubuntu EC2') {
             steps {
-                echo "Deploying application to EC2: ${EC2_IP}"
-                sshagent(credentials: [SSH_CRED_ID]) {
-                    script {
-                        def jarFile = sh(script: "ls ${PROJECT_DIR}/target/*.jar 2>/dev/null | head -n 1 || true", returnStdout: true).trim()
-                        if (!jarFile) {
-                            error "No JAR file found in ${PROJECT_DIR}/target. Build might have failed."
-                        }
-                        echo "JAR Found: ${jarFile}"
-
-                        // create remote dir and set ownership, then copy jar
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${EC2_IP} 'sudo mkdir -p ${APP_PATH} && sudo chown ${REMOTE_USER}:${REMOTE_USER} ${APP_PATH} || true'
-                            scp -o StrictHostKeyChecking=no "${jarFile}" ${REMOTE_USER}@${EC2_IP}:"${APP_PATH}/app.jar"
-                        """
-
-                        // restart service (if exists)
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${EC2_IP} 'sudo systemctl restart ecom.service || echo \"service restart failed\"'
-                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${EC2_IP} 'sudo systemctl status ecom.service --no-pager || true'
-                        """
-                    }
-                }
+                sh '''
+                scp -o StrictHostKeyChecking=no \
+                -i ${SSH_KEY} \
+                target/*.jar ${EC2_USER}@${EC2_HOST}:/home/ubuntu/app/app.jar
+                '''
             }
         }
-    }
 
-    post {
-        success {
-            echo "🎉 Pipeline SUCCESS — Application deployed to EC2 ${EC2_IP}"
-        }
-        failure {
-            echo "❌ Pipeline FAILED — Check console output"
-        }
-        always {
-            deleteDir()
+        stage('Restart Spring Boot Service') {
+            steps {
+                sh '''
+                ssh -o StrictHostKeyChecking=no \
+                -i ${SSH_KEY} ${EC2_USER}@${EC2_HOST} \
+                "sudo systemctl restart springboot"
+                '''
+            }
         }
     }
 }
