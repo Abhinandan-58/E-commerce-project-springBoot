@@ -10,7 +10,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                dir('Jtproject') { 
+                dir('E-commerce-application') { 
                     sh 'mvn clean package'
                 }
             }
